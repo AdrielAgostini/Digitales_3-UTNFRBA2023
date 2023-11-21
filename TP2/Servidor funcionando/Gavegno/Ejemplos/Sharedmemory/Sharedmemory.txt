@@ -1,0 +1,17 @@
+
+/*crear memoria compartida en el kernel una vez conocida la clave*/
+
+shmid = shmget(key, size, IPC_CREAT | 0660);
+
+/*Para adjuntar la memoria al proceso:*/
+
+addr = shmat(shmid, NULL, 0);                   //addr apunta a la memoria compartida
+
+/*Para separar la memoria del proceso:*/
+shmdt(addr);
+
+
+
+
+
+
