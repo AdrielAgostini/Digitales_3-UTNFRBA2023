@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "select.h": "c",
+        "pr_ipc.h": "c",
+        "config.h": "c",
+        "pr_sensor.h": "c",
+        "sendfile.h": "c"
+    }
+}
