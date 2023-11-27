@@ -1,5 +1,6 @@
 #include "../inc/PR_Sensor.h"
 #include "../inc/Servidor.h"
+#include "../inc/funcSIMD.h"
 
 extern config_t *configuracionServer;
 extern sensor_t *SensorData;
@@ -48,7 +49,7 @@ void Sensor_readData(void)
             }
             else
             {
-                /*
+                
                 auxDatos = PromedioSIMD( bufferMPU6050, auxMuestreo);
                 semop(semaforoSensor, &tomar, 1); //Tomo el semaforo
                 SensorData->accel_xout = auxDatos.accel_xout;
@@ -59,7 +60,8 @@ void Sensor_readData(void)
                 SensorData->gyro_yout = auxDatos.gyro_yout;
                 SensorData->gyro_zout = auxDatos.gyro_zout;
                 semop(semaforoSensor, &liberar, 1); //Libreo el semaforo
-                */
+                
+               /*
                                semop(semaforoSensor, &tomar, 1); //Tomo el semaforo
                 SensorData->accel_xout = 1;
                 SensorData->accel_yout = 2;
@@ -69,6 +71,7 @@ void Sensor_readData(void)
                 SensorData->gyro_yout = 6;
                 SensorData->gyro_zout = 7;
                 semop(semaforoSensor, &liberar, 1); //Libreo el semaforo
+                */
             }
             free(bufferMPU6050);
         }

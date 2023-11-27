@@ -9,7 +9,7 @@ CFLAGS = -c -Wall
 CFSIMD = -c -Wall -Ofast -pthread -lrt
 NEONFLAGS = -S
 OUTPUT = Servidor.exe
-OBJETO = $(OBJPATH)Servidor.o $(OBJPATH)PR_Sensor.o $(OBJPATH)PR_IPC.o $(OBJPATH)config.o $(OBJPATH)string.o $(OBJPATH)dictionary.o
+OBJETO = $(OBJPATH)Servidor.o $(OBJPATH)funcSIMD.o $(OBJPATH)PR_Sensor.o $(OBJPATH)PR_IPC.o $(OBJPATH)config.o $(OBJPATH)string.o $(OBJPATH)dictionary.o
 
 all: $(OBJETO) 
 	$(CC) $(OBJETO) $(OFLAGS) $(OUTPUT)	
@@ -21,6 +21,9 @@ $(OBJPATH)PR_Sensor.o: $(SRCPATH)PR_Sensor.c
 	$(CC) $< $(CFLAGS) -o $@
 
 $(OBJPATH)PR_IPC.o: $(SRCPATH)PR_IPC.c
+	$(CC) $< $(CFSIMD) -o $@
+
+$(OBJPATH)funcSIMD.o: $(SRCPATH)funcSIMD.c
 	$(CC) $< $(CFSIMD) -o $@
 
 $(OBJPATH)config.o: $(COMPATH)config.c 

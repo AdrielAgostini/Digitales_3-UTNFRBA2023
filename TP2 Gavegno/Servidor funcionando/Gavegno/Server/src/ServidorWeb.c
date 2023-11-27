@@ -436,6 +436,7 @@ void ManejadorSensor(void)
 
     while (!FLAG_EXIT)
     {
+        perror("Estoy en While\n");
         semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
         auxMuestreo = configuracionServer->muestreo;
         semop(semaforoConfig, &liberar, 1); //Libreo el semaforo

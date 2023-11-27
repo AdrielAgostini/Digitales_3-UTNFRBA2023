@@ -518,8 +518,10 @@ static int my_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 static int driver_probe(struct platform_device *pdev) {
   int status = 0;
-  state.flag = 0;
   uint32_t reg_aux;
+  
+  state.flag = 0;
+  
   //struct resource *res = NULL;
 
   dev_info(&pdev->dev, "Entro al probe\n");
