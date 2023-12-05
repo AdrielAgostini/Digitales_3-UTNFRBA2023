@@ -473,6 +473,7 @@ ssize_t i2c2_MPU6050_read(struct file* file, char __user  *userbuff, size_t len,
 
 
 static int i2c2_release(struct inode *inode, struct file *file) {
+	pr_info("%s: Cerrado\n", ID);
   iowrite32(0x0000, i2c2 + I2C2_CON);
   iowrite32(0x00, i2c2 + I2C2_PSC);
   iowrite32(0x00, i2c2 + I2C2_SCLL);
