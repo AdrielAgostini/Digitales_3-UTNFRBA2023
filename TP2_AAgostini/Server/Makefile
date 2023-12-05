@@ -2,6 +2,7 @@ SRCPATH = ./src/
 OBJPATH = ./obj/
 COMPATH = ./comons/
 PUERTO = 10101
+NAME_MOD = platform_driver
 
 CC = gcc
 OFLAGS = -lm -o   
@@ -38,7 +39,10 @@ $(OBJPATH)dictionary.o: $(COMPATH)collections/dictionary.c
 	$(CC) $< $(CFLAGS) -o $@
 	
 run:	
+	sudo rmmod $(NAME_MOD)
+	sudo insmod ../driver/$(NAME_MOD).ko
 	./$(OUTPUT) $(PUERTO)
+	
 
 clean:
 	rm ./obj/*.o *.exe 

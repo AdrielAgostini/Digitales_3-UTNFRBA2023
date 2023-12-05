@@ -256,47 +256,37 @@ void MPU6050_writebyte(uint8_t registro, uint8_t data, uint8_t modo)
 	uint32_t reg_valor = 0;
 	//uint32_t estado = 0;
 
-
-	// Chequeo si la línea esta BUSY
 	reg_valor = ioread32(i2c2 + I2C2_IRQSTATUS_RAW);
 	if((reg_valor >> 12) & 0x01)
 	{
 		return;
 	}
 
-	// cargo datos a transmitir
 	tx_data = data;
 	tx_registro = registro;
 	tx_modo = modo;
 
 	if (modo == Tx_MODO_ESCRITURA)
 	{
-		//Tx por escritura
-		// data len = 2 byte
 		iowrite32(2, i2c2 + I2C2_CNT);
 	}
 	if (modo == Tx_MODO_LECTURA)
 	{
-		//Tx por lectura
-		// data len = 1 byte
 		iowrite32(1, i2c2 + I2C2_CNT);
 	}
 
-	// config registro -> ENABLE & MASTER & TX
 	reg_valor = ioread32(i2c2 + I2C2_CON);
 	reg_valor |= 0x600;
 	iowrite32(reg_valor, i2c2 + I2C2_CON);
 
-	// habilito tx interupcion
+
 	iowrite32(I2C2_IRQSTATUS_XRDY, i2c2 + I2C2_IRQENABLE_SET);
 
-	// Genero condición de START
 	reg_valor = ioread32(i2c2 + I2C2_CON);
 	reg_valor |= I2C2_CON_START;
 	iowrite32(reg_valor, i2c2 + I2C2_CON);
 
-	// Pongo el proceso ininterumpible (por estar escribiendo registros) a esperar a que la IRQ termine de transmitir.
-	wait_event_interruptible(queue_in, queue_cond > 0); 
+	wait_event(queue_in, queue_cond > 0); 
 
 	queue_cond = 0;
 
@@ -305,7 +295,6 @@ void MPU6050_writebyte(uint8_t registro, uint8_t data, uint8_t modo)
 	reg_valor &= 0xFFFFFFFE;
 	reg_valor |= I2C2_CON_STOP;
 	iowrite32(reg_valor, i2c2 + I2C2_CON);
-
 
 	msleep(1);
 }

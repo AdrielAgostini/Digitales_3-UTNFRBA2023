@@ -195,12 +195,7 @@ int main(int argc, char *argv[])
     {
         if (n_childs == 0){
             close(sock);
-            semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
-            shmdt(sharMemSensor);                    //Separo la memoria del sensor del proceso
-            shmctl(sharMemIdSensor, IPC_RMID, NULL); //Cierro la Shared Memory del sensor
-            semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
-            shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
-            shmctl(sharMemIdConfig, IPC_RMID, NULL); //Cierro la Shared Memory de la configuracion
+            End_IPC();
             
             printf("|----------------------------------------------------\n");
             printf("|Servidor Finalizado...\n");
