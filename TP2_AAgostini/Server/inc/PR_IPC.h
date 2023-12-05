@@ -25,7 +25,7 @@
 #include <sys/sendfile.h>
 
 
-int crear_semaforo(int *semaforo, key_t key);
-void *creo_SharedMemory(int *shaMemID, key_t key);
+int sem_create(int *semaforo, key_t key);
+void *shmem_create(int *shaMemID, key_t key);
 
 #endif /* _PR_IPC_H_ */

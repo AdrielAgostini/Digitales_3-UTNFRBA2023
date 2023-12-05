@@ -3,6 +3,6 @@
 
 
 
-sensor_t PromedioSIMD(uint8_t *datos, int cant);
+sensor_t PromSIMD(uint8_t *data, int samples);
 
 #endif /* _FUNCSIMD_H_ */

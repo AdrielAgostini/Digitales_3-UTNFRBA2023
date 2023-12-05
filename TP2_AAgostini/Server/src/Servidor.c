@@ -34,6 +34,8 @@ struct sembuf liberar = {0, +1, SEM_UNDO}; // Estructura para liberar el semáfo
 struct sockaddr_in datosServidor;
 int sharMemIdSensor,sharMemIdConfig;
 struct timeval timeout;
+int flag_exit = 0;
+int flag_config = 0;
 /*---------------Global Variables End---------------*/
 
 /**********************************************************/
@@ -44,7 +46,7 @@ int main(int argc, char *argv[])
 {
   int sock;
   int res;
-  int sensorPID;
+  int sensorPID, configPID;
   int arg_port;
   int auxConexMAX, auxConexiones;
   socklen_t longDirec;
@@ -56,6 +58,11 @@ int main(int argc, char *argv[])
   printf("|*******************************************************\n");
   printf("|Configuracion de Procesos Realizada                    \n");
   printf("|*******************************************************\n");
+
+  signal(SIGUSR2, SIGUSR2_handler);
+  signal(SIGCHLD, SIGCHLD_handler);
+  signal(SIGINT, SIGINT_handler);
+  
 
 
   res = Init_Server(&sock,arg_port);
@@ -89,10 +96,30 @@ int main(int argc, char *argv[])
       exit(1);
   }
 
+    configPID = fork();
+    if (configPID < 0)
+    {
+        semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
+        shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
+        shmctl(sharMemIdConfig, IPC_RMID, NULL); //Cierro la Shared Memory de la configuracion
+        close(sock);
+        exit(1);
+    }
+    if (configPID == 0)
+    {
+        //Funcion para manejar la configuracion
+        ManejadorConfiguracion();
 
+        semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
+        shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
+        shmctl(sharMemIdConfig, IPC_RMID, NULL); //Cierro la Shared Memory de la configuracion
+        close(sock);
+        exit(1);
+    }
+printf("|Proceso Config ID = %d\n", configPID);
  
 /* ---- Atender usuarios ----*/
-  while (1){
+  while (!flag_exit){
     int pid, sock_aux;
     struct sockaddr_in datosCliente;
     fd_set readfds;
@@ -162,6 +189,29 @@ int main(int argc, char *argv[])
     }
   }
   }
+      while(1) 
+    {
+        printf("|----------------------------------------------------\n");
+        printf("|Terminando Servidor...\n");
+        printf("|----------------------------------------------------\n");
+        sleep(5);
+        sleep(5);
+        close(sock);
+        semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
+        shmdt(sharMemSensor);                    //Separo la memoria del sensor del proceso
+        shmctl(sharMemIdSensor, IPC_RMID, NULL); //Cierro la Shared Memory del sensor
+        semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
+        shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
+        shmctl(sharMemIdConfig, IPC_RMID, NULL); //Cierro la Shared Memory de la configuracion
+        
+        printf("|----------------------------------------------------\n");
+        printf("|Servidor Finalizadon...\n");
+        printf("|----------------------------------------------------\n");
+        return 0;
+    
+        sleep(1);
+    }
+    return 0;
 }
 
 void ProcesarCliente(int s_aux, struct sockaddr_in *pDireccionCliente,
@@ -196,18 +246,35 @@ void ProcesarCliente(int s_aux, struct sockaddr_in *pDireccionCliente,
             "<h1>Temperatura</h1>");
  
   sprintf(HTML,
-      "%s<p> Servidor Web.</p>"
-      "<p> Valores del sensor MPU6050: </p>"
-      "<p> accel_Xout = %.02fg </p>"
-      "<p> accel_Yout = %.02fg </p>"
-      "<p> accel_Zout = %.02fg </p>"
-      "<p> temp_out   = %.02f° </p>"
-      "<p> gyro_Xout  = %.02f°/s </p>"
-      "<p> gyro_Yout  = %.02f°/s </p>"
-      "<p> gyro_Zout  = %.02f°/s </p>",
-      encabezadoHTML, SensorData->accel_xout, SensorData->accel_yout, SensorData->accel_zout,
-      SensorData->temp_out, SensorData->gyro_xout, SensorData->gyro_yout, SensorData->gyro_zout);
-  
+    "%s"
+    "<head>"
+    "   <style>"
+    "       body { background-color: #f2f2f2; font-family: Arial, sans-serif; }"
+    "       h2 { color: #333; }"
+    "       h3 { color: #555; }"
+    "       table { width: 50%; border-collapse: collapse; margin-top: 20px; }"
+    "       th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }"
+    "       th { background-color: #4CAF50; color: white; }"
+    "   </style>"
+    "</head>"
+    "<body>"
+    "<h2>Servidor Web</h2>"
+    "<h3>Valores del sensor MPU6050:</h3>"
+    "<table>"
+    "<tr><th>Parámetro</th><th>Valor</th></tr>"
+    "<tr><td><strong>accel_Xout</strong></td><td>%.02fg</td></tr>"
+    "<tr><td><strong>accel_Yout</strong></td><td>%.02fg</td></tr>"
+    "<tr><td><strong>accel_Zout</strong></td><td>%.02fg</td></tr>"
+    "<tr><td><strong>temp_out</strong></td><td>%.02f°</td></tr>"
+    "<tr><td><strong>gyro_Xout</strong></td><td>%.02f°/s</td></tr>"
+    "<tr><td><strong>gyro_Yout</strong></td><td>%.02f°/s</td></tr>"
+    "<tr><td><strong>gyro_Zout</strong></td><td>%.02f°/s</td></tr>"
+    "</table>"
+    "</body>",
+    encabezadoHTML, 
+    SensorData->accel_xout, SensorData->accel_yout, SensorData->accel_zout,
+    SensorData->temp_out, SensorData->gyro_xout, SensorData->gyro_yout, SensorData->gyro_zout);
+
   sprintf(bufferComunic,
           "HTTP/1.1 200 OK\n"
           "Content-Length: %ld\n"
@@ -217,7 +284,7 @@ void ProcesarCliente(int s_aux, struct sockaddr_in *pDireccionCliente,
   semop(semaforoSensor, &liberar, 1); //Libreo el semaforo
 
   printf("* Enviado al navegador Web %s:%d:\n%s\n",
-         ipAddr, Port, bufferComunic);
+         ipAddr,   Port, bufferComunic);
   
   // Envia el mensaje al cliente
   if (send(s_aux, bufferComunic, strlen(bufferComunic), 0) == -1)
@@ -234,14 +301,14 @@ int Init_IPC (int *sharMemIdSensor, int *sharMemIdConfig){
 
 /* SHARED MEMORY*/
   //sensor
-  sharMemSensor = (sensor_t *)creo_SharedMemory(sharMemIdSensor, KEY_SENSOR);
+  sharMemSensor = (sensor_t *)shmem_create(sharMemIdSensor, KEY_SENSOR);
   if (SensorData == (void *)-1)
   {
       printf("|ERROR: No se pudo obtener Shared Memory para el sensor\n");
       return -1;
   }
   //configuracion
-  sharMemConfig = (config_t *)creo_SharedMemory(sharMemIdConfig, KEY_CONFIG);
+  sharMemConfig = (config_t *)shmem_create(sharMemIdConfig, KEY_CONFIG);
   if (configuracionServer == (void *)-1)
   {
       printf("|ERROR: No se pudo obtener Shared Memory para la Configuracion\n");
@@ -253,7 +320,7 @@ int Init_IPC (int *sharMemIdSensor, int *sharMemIdConfig){
 
 /* SEMAFORO */
     //Sensor
-    if (crear_semaforo(&semaforoSensor, KEY_SENSOR) < 0)
+    if (sem_create(&semaforoSensor, KEY_SENSOR) < 0)
     {
         perror("|ERROR: No se pudo crear el semaforo para el sensor\n");
         semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
@@ -265,7 +332,7 @@ int Init_IPC (int *sharMemIdSensor, int *sharMemIdConfig){
     }
 
     //Creacion del semaforo para la configuracion
-    if (crear_semaforo(&semaforoConfig, KEY_CONFIG) < 0)
+    if (sem_create(&semaforoConfig, KEY_CONFIG) < 0)
     {
       perror("|ERROR: No se pudo crear el semaforo para la configuracion\n");
       End_IPC ();
@@ -379,16 +446,27 @@ void configuracion_init(config_t *serverConf)
     }
 
     serverConf->conexiones = 0;
-    
-    printf("|*******************************************************\n");
-    printf("|                                                       \n");
-    printf("|Cantidad maxima de conexiones      = %d                \n", serverConf->conexiones_max);
-    printf("|Backlog                            = %d                \n", serverConf->backlog);
-    printf("|Muestreo del filtro                = %d                \n", serverConf->muestreo);
-    printf("|Cantidad de conexiones actuales    = %d                \n", serverConf->conexiones);
-    printf("|                                                       \n");
-    printf("|*******************************************************\n");
 }
+
+
+void ManejadorConfiguracion(void)
+{
+    printf("Manejador de la configuracion\n");
+
+    while (!flag_exit)
+    {
+        if (flag_config == true)
+        {
+            //--------Configuracion del Server----------
+            semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
+            configuracion_reload(configuracionServer);
+            semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
+            flag_config = false;
+        }
+        sleep(1);
+    }
+}
+
 
 
 /**
@@ -399,6 +477,71 @@ void configuracion_init(config_t *serverConf)
 **/
 void SIGINT_handler(int sig)
 {
-   // FLAG_EXIT = true;
+    flag_exit = true;
     printf("|SIGINT ID=%d\r\n", getpid());
+}
+
+
+void SIGUSR2_handler(int sig)
+{
+    flag_config = true;
+    //actualizar configuracion
+    return;
+}
+
+void SIGCHLD_handler(int sig)
+{
+    pid_t deadchild = 1;
+    while (deadchild > 0)
+    {
+        deadchild = waitpid(-1, NULL, WNOHANG);
+        if (deadchild > 0)
+        {
+            printf("|Murio el hijo ID=%d\r\n", deadchild);
+        }
+    }
+}
+
+
+void configuracion_reload( config_t *serverConf)
+{
+    t_config *config;
+
+    //Leo el archivo de configuracion
+    config = config_create(CONFIG_RUTA);
+    if (config != NULL)
+    {
+        //El archivo existe, lo leo.
+        if (config_has_property(config, "CONEXIONES_MAX") == true)
+        {
+            serverConf->conexiones_max = config_get_int_value(config, "CONEXIONES_MAX");
+        }
+        else
+        {
+            serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
+        }
+        if (config_has_property(config, "MUESTREO_SENSOR") == true)
+        {
+            serverConf->muestreo = config_get_int_value(config, "MUESTREO_SENSOR");
+        }
+        else
+        {
+            serverConf->muestreo = MUESTREO_SENSOR;
+        }
+    }
+    else
+    {
+        //No existe el archivo de configuracion, utilizo valores por default
+        printf("No existe el archivo de configuracion\n");
+        serverConf->backlog = BACKLOG_DEFAULT;
+        serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
+        serverConf->muestreo = MUESTREO_SENSOR;
+    }
+
+    printf("*****************************\n");
+    printf("Nueva Configuracion cargada  \n");
+    printf("    Max Con. =    %d        \n", serverConf->conexiones_max);
+    printf("    Backlog  =    %d        \n", serverConf->backlog);
+    printf("    Muestras =    %d        \n", serverConf->muestreo);
+    printf("*****************************\n");
 }

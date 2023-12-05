@@ -57,6 +57,7 @@ void *sharMemConfig ;
 int semaforoSensor, semaforoConfig;
 struct sembuf tomar ;   // Estructura para tomar el semáforo
 struct sembuf liberar ; // Estructura para liberar el semáforo
+int flag_exit;
 /*---------------Global Variables End---------------*/
 
 void ProcesarCliente(int, struct sockaddr_in *, int );
@@ -66,6 +67,16 @@ void End_IPC (void);
 void configuracion_init(config_t *);
 
 void SIGINT_handler(int sig);
+
+void ManejadorConfiguracion(void);
+void SIGUSR2_handler(int );
+void SIGCHLD_handler(int );
+void configuracion_reload( config_t *);
+
+
+
+
+
 
 
 #endif /* _SERVIDOR_H_ */
