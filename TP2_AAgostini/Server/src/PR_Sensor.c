@@ -19,7 +19,12 @@ void Sensor_readData(void)
 
     printf("|Manejador del Sensor\n");
 
-
+    sen_fd = open("/dev/acelerometro-td3", O_RDWR); 
+    if (sen_fd < 0)
+    {
+        perror("No puedo abrir acelerometro-td3\n");
+        exit(1);
+    }
 
     while (!flag_exit)
     {
@@ -35,12 +40,7 @@ void Sensor_readData(void)
         }
         else
         {
-            sen_fd = open("/dev/acelerometro-td3", O_RDWR);
-            if (sen_fd < 0)
-            {
-                perror("No puedo abrir acelerometro-td3\n");
-                exit(1);
-            }
+            
             estado = read(sen_fd, bufferMPU6050, auxMuestreo*sizeof(sensorMPU_t));
             
             if( estado != 0)

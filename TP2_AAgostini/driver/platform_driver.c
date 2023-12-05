@@ -628,7 +628,7 @@ static int driver_probe(struct platform_device *pdev) {
 
 static int driver_remove(struct platform_device *pdev) {
   dev_info(&pdev->dev, "Desmontando Driver\n");
-  //free_irq(state.irq,NULL);
+  free_irq(state.irq,NULL);
   iounmap(cm_per);
   iounmap(control_module);
   iounmap(i2c2);
