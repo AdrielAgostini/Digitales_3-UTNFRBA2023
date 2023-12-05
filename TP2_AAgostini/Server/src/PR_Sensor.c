@@ -19,13 +19,13 @@ void Sensor_readData(void)
 
     printf("|Manejador del Sensor\n");
 
-    sen_fd = open("/dev/acelerometro-td3", O_RDWR); 
+
+    sen_fd = open("/dev/acelerometro-td3", O_RDWR);
     if (sen_fd < 0)
     {
         perror("No puedo abrir acelerometro-td3\n");
         exit(1);
     }
-
     while (!flag_exit)
     {
         semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
@@ -40,7 +40,6 @@ void Sensor_readData(void)
         }
         else
         {
-            
             estado = read(sen_fd, bufferMPU6050, auxMuestreo*sizeof(sensorMPU_t));
             
             if( estado != 0)
@@ -66,10 +65,10 @@ void Sensor_readData(void)
             free(bufferMPU6050);
             
         }
-        sleep(1);
-    }close (sen_fd);
-
-    
+        sleep(3);
+    }
+    close (sen_fd);
+    sleep(3);
     return;
 }
 

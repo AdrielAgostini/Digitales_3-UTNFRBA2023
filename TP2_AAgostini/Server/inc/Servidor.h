@@ -4,6 +4,8 @@
 
 #include "./PR_Sensor.h"
 #include "./PR_IPC.h"
+#include "./PR_Config.h"
+
 #include "../comons/config.h"
 #include <stdio.h>
 #include <stdlib.h>

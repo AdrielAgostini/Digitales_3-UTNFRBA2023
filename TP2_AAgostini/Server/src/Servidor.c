@@ -36,11 +36,11 @@ int sharMemIdSensor,sharMemIdConfig;
 struct timeval timeout;
 int flag_exit = 0;
 int flag_config = 0;
+int n_childs = 0;
 /*---------------Global Variables End---------------*/
 
 /**********************************************************/
 /* funcion MAIN                                           */
-/* Orden Parametros: Puerto                               */
 /**********************************************************/
 int main(int argc, char *argv[])
 {
@@ -86,7 +86,6 @@ int main(int argc, char *argv[])
   if (sensorPID == 0)
   {
       //Funcion para manejar el sensor
-      //signal(SIGINT, SIGINT_handler_Sensor);
       Sensor_readData();
 
       semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
@@ -95,7 +94,6 @@ int main(int argc, char *argv[])
       close(sock);
       exit(1);
   }
-
     configPID = fork();
     if (configPID < 0)
     {
@@ -108,7 +106,7 @@ int main(int argc, char *argv[])
     if (configPID == 0)
     {
         //Funcion para manejar la configuracion
-        ManejadorConfiguracion();
+        config_handler();
 
         semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
         shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
@@ -116,8 +114,9 @@ int main(int argc, char *argv[])
         close(sock);
         exit(1);
     }
-printf("|Proceso Config ID = %d\n", configPID);
- 
+    printf("|Proceso Config ID = %d\n", configPID);
+
+    n_childs = 2;
 /* ---- Atender usuarios ----*/
   while (!flag_exit){
     int pid, sock_aux;
@@ -184,36 +183,78 @@ printf("|Proceso Config ID = %d\n", configPID);
         semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
         exit(0);
       }
+      n_childs++;
       close(sock_aux);  // El proceso padre debe cerrar el socket
                     // que usa el hijo.
     }
   }
   }
-      while(1) 
+    printf("|----------------------------------------------------\n");
+    printf("|Terminando Servidor...\n");
+    while(1) 
     {
-        printf("|----------------------------------------------------\n");
-        printf("|Terminando Servidor...\n");
-        printf("|----------------------------------------------------\n");
-        sleep(5);
-        sleep(5);
-        close(sock);
-        semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
-        shmdt(sharMemSensor);                    //Separo la memoria del sensor del proceso
-        shmctl(sharMemIdSensor, IPC_RMID, NULL); //Cierro la Shared Memory del sensor
-        semctl(semaforoConfig, 0, IPC_RMID);     //Cierro el semaforo de la configuracion
-        shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
-        shmctl(sharMemIdConfig, IPC_RMID, NULL); //Cierro la Shared Memory de la configuracion
-        
-        printf("|----------------------------------------------------\n");
-        printf("|Servidor Finalizadon...\n");
-        printf("|----------------------------------------------------\n");
-        return 0;
-    
-        sleep(1);
+        if (n_childs == 0){
+            close(sock);
+            End_IPC();
+            
+            printf("|----------------------------------------------------\n");
+            printf("|Servidor Finalizado...\n");
+            printf("|----------------------------------------------------\n");
+            return 0;
+        }else
+        printf("|...\n");
+        sleep (1);
     }
-    return 0;
 }
 
+
+
+ /*----SERVR FUNCTIONS BEGIN----*/
+int Init_Server (int *sock, int arg_port){
+  int auxBacklog;
+
+//--------Configuracion del Server----------
+  semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
+  config_init(configuracionServer);
+  semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
+
+
+  *sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (*sock == -1)
+  {
+      printf("|ERROR: El socket no se ha creado correctamente!\n");
+      End_IPC ();
+      exit(1);
+  }
+
+  // Asigna el puerto indicado y la IP de la maquina
+  datosServidor.sin_family = AF_INET;
+  datosServidor.sin_port = htons(arg_port);
+  datosServidor.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  // Obtiene el puerto para este proceso.
+  if (bind(*sock, (struct sockaddr *)&datosServidor, sizeof(datosServidor)) == -1)
+  {
+      printf("|ERROR: este proceso no puede tomar el puerto %d\n", arg_port);
+      End_IPC ();
+      close(*sock);
+      exit(1);
+  }
+
+
+  // Indicar que el socket encole hasta backlog pedidos de conexion simultaneas.
+  semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
+  auxBacklog = configuracionServer->backlog;
+  semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
+  if (listen(*sock, auxBacklog) < 0)
+  {
+      perror("|Error en listen");
+      End_IPC ();
+      close(sock);
+      exit(1);
+  }
+  return 1;
+}
 void ProcesarCliente(int s_aux, struct sockaddr_in *pDireccionCliente,
                      int puerto)
 {
@@ -295,8 +336,10 @@ void ProcesarCliente(int s_aux, struct sockaddr_in *pDireccionCliente,
   // Cierra la conexion con el cliente actual
   close(s_aux);
 }
+ /*----SERVR FUNCTIONS ENDS----*/
 
 
+ /*----IPC FUNCTIONS BEGIN----*/
 int Init_IPC (int *sharMemIdSensor, int *sharMemIdConfig){
 
 /* SHARED MEMORY*/
@@ -339,58 +382,6 @@ int Init_IPC (int *sharMemIdSensor, int *sharMemIdConfig){
       return -1;
     }
 }
-
-
-/*
-* Creacion  y configuracion del Servidor
-*/
-int Init_Server (int *sock, int arg_port){
-  int auxBacklog;
-
-//--------Configuracion del Server----------
-  semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
-  configuracion_init(configuracionServer);
-  semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
-
-
-  *sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (*sock == -1)
-  {
-      printf("|ERROR: El socket no se ha creado correctamente!\n");
-      End_IPC ();
-      exit(1);
-  }
-
-  // Asigna el puerto indicado y la IP de la maquina
-  datosServidor.sin_family = AF_INET;
-  datosServidor.sin_port = htons(arg_port);
-  datosServidor.sin_addr.s_addr = htonl(INADDR_ANY);
-
-  // Obtiene el puerto para este proceso.
-  if (bind(*sock, (struct sockaddr *)&datosServidor, sizeof(datosServidor)) == -1)
-  {
-      printf("|ERROR: este proceso no puede tomar el puerto %d\n", arg_port);
-      End_IPC ();
-      close(*sock);
-      exit(1);
-  }
-
-
-  // Indicar que el socket encole hasta backlog pedidos de conexion simultaneas.
-  semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
-  auxBacklog = configuracionServer->backlog;
-  semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
-  if (listen(*sock, auxBacklog) < 0)
-  {
-      perror("|Error en listen");
-      End_IPC ();
-      close(sock);
-      exit(1);
-  }
-  return 1;
-}
-
-
 void End_IPC (){
   semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
   shmdt(sharMemSensor);                    //Separo la memoria del sensor del proceso
@@ -399,96 +390,21 @@ void End_IPC (){
   shmdt(sharMemConfig);                    //Separo la memoria de la configuracion del proceso
   shmctl(sharMemIdSensor, IPC_RMID, NULL);
 }
+ /*----IPC FUNCTIONS ENDS----*/
 
 
-
-void configuracion_init(config_t *serverConf)
-{
-    t_config *config;
-
-    //Leo el archivo de configuracion
-    config = config_create(CONFIG_RUTA);
-    if (config != NULL)
-    {
-        //El archivo existe, lo leo.
-        if (config_has_property(config, "CONEXIONES_MAX") == true)
-        {
-            serverConf->conexiones_max = config_get_int_value(config, "CONEXIONES_MAX");
-        }
-        else
-        {
-            serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
-        }
-        if (config_has_property(config, "BACKLOG") == true)
-        {
-            serverConf->backlog = config_get_int_value(config, "BACKLOG");
-        }
-        else
-        {
-            serverConf->backlog = BACKLOG_DEFAULT;
-        }
-        if (config_has_property(config, "MUESTREO_SENSOR") == true)
-        {
-            serverConf->muestreo = config_get_int_value(config, "MUESTREO_SENSOR");
-        }
-        else
-        {
-            serverConf->muestreo = MUESTREO_SENSOR;
-        }
-    }
-    else
-    {
-        //No existe el archivo de configuracion, utilizo valores por default
-        printf("No existe el archivo de configuracion\n");
-        serverConf->backlog = BACKLOG_DEFAULT;
-        serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
-        serverConf->muestreo = MUESTREO_SENSOR;
-    }
-
-    serverConf->conexiones = 0;
-}
-
-
-void ManejadorConfiguracion(void)
-{
-    printf("Manejador de la configuracion\n");
-
-    while (!flag_exit)
-    {
-        if (flag_config == true)
-        {
-            //--------Configuracion del Server----------
-            semop(semaforoConfig, &tomar, 1); //Tomo el semaforo
-            configuracion_reload(configuracionServer);
-            semop(semaforoConfig, &liberar, 1); //Libreo el semaforo
-            flag_config = false;
-        }
-        sleep(1);
-    }
-}
-
-
-
-/**
- * @fn void SIGINT_handler(int sig) 
- * @details 
- * @param sig
- * @return void
-**/
+ /*----SIGNAL HANDLERS BEGINS----*/
 void SIGINT_handler(int sig)
 {
     flag_exit = true;
     printf("|SIGINT ID=%d\r\n", getpid());
 }
-
-
 void SIGUSR2_handler(int sig)
 {
     flag_config = true;
     //actualizar configuracion
     return;
 }
-
 void SIGCHLD_handler(int sig)
 {
     pid_t deadchild = 1;
@@ -498,50 +414,8 @@ void SIGCHLD_handler(int sig)
         if (deadchild > 0)
         {
             printf("|Murio el hijo ID=%d\r\n", deadchild);
+            n_childs--;
         }
     }
 }
-
-
-void configuracion_reload( config_t *serverConf)
-{
-    t_config *config;
-
-    //Leo el archivo de configuracion
-    config = config_create(CONFIG_RUTA);
-    if (config != NULL)
-    {
-        //El archivo existe, lo leo.
-        if (config_has_property(config, "CONEXIONES_MAX") == true)
-        {
-            serverConf->conexiones_max = config_get_int_value(config, "CONEXIONES_MAX");
-        }
-        else
-        {
-            serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
-        }
-        if (config_has_property(config, "MUESTREO_SENSOR") == true)
-        {
-            serverConf->muestreo = config_get_int_value(config, "MUESTREO_SENSOR");
-        }
-        else
-        {
-            serverConf->muestreo = MUESTREO_SENSOR;
-        }
-    }
-    else
-    {
-        //No existe el archivo de configuracion, utilizo valores por default
-        printf("No existe el archivo de configuracion\n");
-        serverConf->backlog = BACKLOG_DEFAULT;
-        serverConf->conexiones_max = CANT_CONEX_MAX_DEFAULT;
-        serverConf->muestreo = MUESTREO_SENSOR;
-    }
-
-    printf("*****************************\n");
-    printf("Nueva Configuracion cargada  \n");
-    printf("    Max Con. =    %d        \n", serverConf->conexiones_max);
-    printf("    Backlog  =    %d        \n", serverConf->backlog);
-    printf("    Muestras =    %d        \n", serverConf->muestreo);
-    printf("*****************************\n");
-}
+ /*----SIGNAL HANDLERS ENDS----*/

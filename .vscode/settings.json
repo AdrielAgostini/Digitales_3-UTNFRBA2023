@@ -8,6 +8,8 @@
         "config.h": "c",
         "pr_sensor.h": "c",
         "sendfile.h": "c",
-        "inet.h": "c"
+        "inet.h": "c",
+        "servidor.h": "c",
+        "typeinfo": "c"
     }
 }
