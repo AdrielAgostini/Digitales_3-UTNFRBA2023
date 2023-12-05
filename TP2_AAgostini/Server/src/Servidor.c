@@ -189,11 +189,10 @@ int main(int argc, char *argv[])
     }
   }
   }
-      while(1) 
+    printf("|----------------------------------------------------\n");
+    printf("|Terminando Servidor...\n");
+    while(1) 
     {
-        printf("|----------------------------------------------------\n");
-        printf("|Terminando Servidor...\n");
-
         if (n_childs == 0){
             close(sock);
             semctl(semaforoSensor, 0, IPC_RMID);     //Cierro el semaforo del sensor
@@ -209,6 +208,7 @@ int main(int argc, char *argv[])
             return 0;
         }else
         printf("|...\n");
+        sleep (1);
     }
 }
 

@@ -42,7 +42,7 @@ void Sensor_readData(void)
                 exit(1);
             }
             estado = read(sen_fd, bufferMPU6050, auxMuestreo*sizeof(sensorMPU_t));
-            close (sen_fd);
+            
             if( estado != 0)
             {
                 //Error en la lectura
@@ -66,10 +66,9 @@ void Sensor_readData(void)
             free(bufferMPU6050);
             
         }
-        sleep(1);
-    }
-
-    
+        sleep(3);
+    }close (sen_fd);
+    sleep(3);
     return;
 }
 
